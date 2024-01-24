@@ -6,10 +6,10 @@ import os, sys
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 sys.path.append('..')
 
-from Environments.minigrid_labyrinth import Maze
+from environments.minigrid_labyrinth import Maze
 import numpy as np
-from Controllers.minigrid_controller import MiniGridController
-from Controllers.meta_controller import MetaController
+from controllers.minigrid_controller import MiniGridController
+from controllers.meta_controller import MetaController
 import pickle
 import os, sys
 from datetime import datetime

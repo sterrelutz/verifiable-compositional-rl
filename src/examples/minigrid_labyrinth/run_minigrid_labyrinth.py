@@ -18,7 +18,7 @@ from utils.results_saver import Results
 # %% Setup and create the environment
 env_settings = {
     'agent_start_states' : [(1,1,0)],
-    'slip_p' : 0.1,
+    'slip_p': 0, #original: 0.1
 }
 
 env = Maze(**env_settings)
@@ -33,7 +33,7 @@ meta_controller_n_steps_per_rollout = 200
 
 # %% Set the load directory (if loading pre-trained sub-systems) or create a new directory in which to save results
 
-load_folder_name = ''
+load_folder_name = '2021-05-26_22-35-16_minigrid_labyrinth'
 save_learned_controllers = True
 
 experiment_name = 'minigrid_labyrinth'
