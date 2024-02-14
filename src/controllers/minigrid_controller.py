@@ -1,10 +1,9 @@
 import numpy as np
-from numpy.core.numeric import roll
 from stable_baselines3 import PPO
-from environments.minigrid_labyrinth import Maze
-import os, sys
-from datetime import datetime
+from environments.minigrid_labyrinth import Maze, MazeVariant
+import os
 import pickle
+
 
 class MiniGridController(object):
     """
@@ -12,8 +11,9 @@ class MiniGridController(object):
     the minigrid gym environment.
     """
 
-    def __init__(self, controller_ind, init_states=None, final_states=None, env_settings=None, max_training_steps=1e6, load_dir=None, verbose=False):
-        
+    def __init__(self, controller_ind, init_states=None, final_states=None, env_settings=None, max_training_steps=1e6,
+                 load_dir=None, verbose=False):
+
         self.controller_ind = controller_ind
         self.init_states = init_states
         self.final_states = final_states
@@ -22,9 +22,9 @@ class MiniGridController(object):
         self.max_training_steps = max_training_steps
 
         self.data = {
-            'total_training_steps' : 0,
-            'performance_estimates' : {},
-            'required_success_prob' : 0,
+            'total_training_steps': 0,
+            'performance_estimates': {},
+            'required_success_prob': 0,
         }
 
         if load_dir is None:
@@ -105,10 +105,10 @@ class MiniGridController(object):
 
         # self.data['rollout_successes'][self.data['total_training_steps']] = rollout_successes
         self.data['performance_estimates'][self.data['total_training_steps']] = {
-            'success_count' : success_count,
-            'success_rate' : success_count / trials,
-            'num_trials' : trials,
-            'avg_num_steps' : avg_num_steps,
+            'success_count': success_count,
+            'success_rate': success_count / trials,
+            'num_trials': trials,
+            'avg_num_steps': avg_num_steps,
         }
 
     def is_task_complete(self, obs):
@@ -138,13 +138,13 @@ class MiniGridController(object):
         controller_file = os.path.join(save_dir, 'controller_data.p')
 
         controller_data = {
-            'controller_ind' : self.controller_ind,
-            'init_states' : self.init_states,
-            'final_states' : self.final_states,
-            'env_settings' : self.env_settings,
-            'verbose' : self.verbose,
-            'max_training_steps' : self.max_training_steps,
-            'data' : self.data,
+            'controller_ind': self.controller_ind,
+            'init_states': self.init_states,
+            'final_states': self.final_states,
+            'env_settings': self.env_settings,
+            'verbose': self.verbose,
+            'max_training_steps': self.max_training_steps,
+            'data': self.data,
         }
 
         with open(controller_file, 'wb') as pickleFile:
@@ -194,17 +194,17 @@ class MiniGridController(object):
         self.training_env.goal_states = self.final_states
 
     def _init_learning_alg(self, verbose=False):
-        self.model = PPO("MlpPolicy", 
-                            self.training_env, 
-                            verbose=verbose,
-                            n_steps=512,
-                            batch_size=64,
-                            gae_lambda=0.95,
-                            gamma=0.99,
-                            n_epochs=10,
-                            ent_coef=0.0,
-                            learning_rate=2.5e-4,
-                            clip_range=0.2)
+        self.model = PPO("MlpPolicy",
+                         self.training_env,
+                         verbose=verbose,
+                         n_steps=512,
+                         batch_size=64,
+                         gae_lambda=0.95,
+                         gamma=0.99,
+                         n_epochs=10,
+                         ent_coef=0.0,
+                         learning_rate=2.5e-4,
+                         clip_range=0.2)
 
     def demonstrate_capabilities(self, n_episodes=5, n_steps=100, render=True):
         """
@@ -225,8 +225,71 @@ class MiniGridController(object):
                 action, _states = self.model.predict(obs, deterministic=True)
                 obs, reward, done, info = self.training_env.step(action)
                 if render:
-                    self.training_env.render(highlight=False)
+                    self.training_env.render(highlight=True)
                 if done:
                     break
 
         obs = self.training_env.reset()
+
+    def set_environment(self, env):
+        env.agent_start_states = self.training_env.agent_start_states
+        env.goal_states = self.training_env.goal_states
+        self.training_env = env
+
+    def eval_performance_variant(self, variant, n_episodes=400, n_steps=100, save=False):
+        """
+        Perform empirical evaluation of the performance of the learned controller.
+
+        Inputs
+        ------
+        n_episodes : int
+            Number of episodes to rollout for evaluation.
+        n_steps : int
+            Length of each episode.
+        """
+        success_count = 0
+        avg_num_steps = 0
+        trials = 0
+        total_steps = 0
+        num_steps = 0
+
+        env = MazeVariant(agent_start_states=[(1, 1, 0)], slip_p=0.1, variant=variant)
+        env.agent_start_states = self.training_env.agent_start_states
+        env.goal_states = self.training_env.goal_states
+
+        rollout_successes = []
+
+        for episode_ind in range(n_episodes):
+            trials = trials + 1
+            avg_num_steps = (avg_num_steps + num_steps) / 2
+
+            obs = env.reset()
+            num_steps = 0
+            for step_ind in range(n_steps):
+                num_steps = num_steps + 1
+                total_steps = total_steps + 1
+                action, _states = self.model.predict(obs, deterministic=True)
+                obs, reward, done, info = env.step(action)
+                if step_ind == n_steps - 1:
+                    rollout_successes.append(0)
+                if done:
+                    if info['task_complete']:
+                        success_count = success_count + 1
+                        rollout_successes.append(1)
+                    else:
+                        rollout_successes.append(0)
+                    break
+
+        if save:
+            self.training_env = env
+            controller_data = {
+                'controller_ind': self.controller_ind,
+                'init_states': self.init_states,
+                'final_states': self.final_states,
+                'env_settings': self.env_settings,
+                'verbose': self.verbose,
+                'max_training_steps': self.max_training_steps,
+                'data': self.data,
+            }
+
+        return success_count / trials, avg_num_steps

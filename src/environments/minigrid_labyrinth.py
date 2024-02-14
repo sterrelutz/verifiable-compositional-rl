@@ -2,6 +2,7 @@
 from gym_minigrid.minigrid import *
 import numpy as np
 
+
 class Maze(MiniGridEnv):
     """
         Maze environment.
@@ -21,7 +22,7 @@ class Maze(MiniGridEnv):
 
     def __init__(
         self,
-        agent_start_states = [(1,1,0)],
+        agent_start_states=[(1,1,0)],
         slip_p=0.0,
     ):
 
@@ -208,3 +209,93 @@ class Maze(MiniGridEnv):
 
     def get_num_states(self):
         return self.width * self.height * 4 # position in the gridworld and also facing direction
+
+class MazeVariant(Maze):
+    """
+        Maze variant environment.
+
+        This environment is full observation.
+        The state is (x, y, dir) where x,y indicate
+        the agent's location in the environment and
+        dir indicates the direction it is facing.
+    """
+
+    def __init__(
+        self,
+        agent_start_states=[(1,1,0)],
+        slip_p=0.0,
+        variant=0,
+    ):
+
+        """
+        Inputs
+        ------
+        agent_start_states : list
+            List of tuples representing the possible initial states
+            (entry conditions) of the agent in the environment.
+        slip_p : float
+            Probability with which the agent "slips" on any given action,
+            and takes another action instead.
+        """
+        self.variant = variant
+
+        super().__init__(
+            agent_start_states=agent_start_states,
+            slip_p=slip_p,
+        )
+
+
+    def _gen_grid(self, width, height):
+        # Create an empty grid
+        self.grid = Grid(width, height)
+
+        # Generate the surrounding walls
+        self.grid.wall_rect(0, 0, width, height)
+
+        # Generate the rooms
+        self.grid.wall_rect(0, 0, 6, 6)
+        self.grid.wall_rect(5, 0, 15, 6)
+        self.grid.wall_rect(8, 5, 6, 11)
+        self.grid.wall_rect(13, 5, 7, 11)
+        self.grid.wall_rect(0, 5, 9, 6)
+        self.grid.wall_rect(0, 10, 9, 6)
+
+        # Add doors
+        self.put_obj(Door('grey', is_open=True), 3, 5)
+        self.put_obj(Door('grey', is_open=True), 5, 2)
+        self.put_obj(Door('grey', is_open=True), 10, 5)
+        self.put_obj(Door('grey', is_open=True), 14, 5)
+        self.put_obj(Door('grey', is_open=True), 5, 10)
+        self.put_obj(Door('grey', is_open=True), 3, 15)
+        self.put_obj(Door('grey', is_open=True), 16, 15)
+
+        # Place a goal square
+        for goal_state in self.goal_states:
+            # self.put_obj(Goal(), goal_state[0], goal_state[1])
+            self.put_obj(Goal(), 1, height - 2)
+
+        # Place dangerous lava
+        if not self.variant == 3:
+            self.grid.horz_wall(2, 7, 3, obj_type=Lava)
+            self.grid.horz_wall(6, 8, 2, obj_type=Lava)
+            self.grid.horz_wall(3, 12, 2, obj_type=Lava)
+            self.grid.horz_wall(6, 14, 2, obj_type=Lava)
+        if self.variant == 1:
+            self.grid.horz_wall(9, 6, 4, obj_type=Lava)
+        if self.variant == 2:
+            self.grid.horz_wall(10, 3, 2, obj_type=Lava)
+        if self.variant == 3:
+            self.grid.horz_wall(13, 4, 3, obj_type=Lava)
+        if self.variant == 4:
+            self.grid.horz_wall(10, 3, 7, obj_type=Lava)
+
+        # Place the agent
+        if self.agent_start_states:
+            # Uniformly pick from the possible start states
+            agent_start_state = self.agent_start_states[np.random.choice(len(self.agent_start_states))]
+            self.agent_pos = (agent_start_state[0], agent_start_state[1])
+            self.agent_dir = agent_start_state[2]
+        else:
+            self.place_agent()
+
+        self.mission = "get to the goal square"

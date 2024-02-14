@@ -5,7 +5,7 @@
 import os, sys
 sys.path.append('../..')
 
-from environments.minigrid_labyrinth import Maze
+from environments.minigrid_labyrinth import Maze, MazeVariant
 import numpy as np
 from controllers.minigrid_controller import MiniGridController
 from controllers.meta_controller import MetaController
@@ -18,10 +18,11 @@ from utils.results_saver import Results
 # %% Setup and create the environment
 env_settings = {
     'agent_start_states' : [(1,1,0)],
-    'slip_p': 0, #original: 0.1
+    'slip_p': 0.1
 }
 
-env = Maze(**env_settings)
+# TODO: make sure sub-controllers are evaluated on updated environment, not their training environment!
+env = MazeVariant(agent_start_states=[(1, 1, 0)], slip_p=0.1, variant=3)
 
 prob_threshold = 0.95 # Desired probability of reaching the final goal
 training_iters = 5e4
@@ -33,7 +34,7 @@ meta_controller_n_steps_per_rollout = 200
 
 # %% Set the load directory (if loading pre-trained sub-systems) or create a new directory in which to save results
 
-load_folder_name = '2021-05-26_22-35-16_minigrid_labyrinth'
+load_folder_name = '2021-05-26_22-35-16_minigrid_labyrinth_copy'
 save_learned_controllers = True
 
 experiment_name = 'minigrid_labyrinth'
@@ -130,6 +131,7 @@ else:
             if controller.controller_ind == i:
                 reordered_list.append(controller)
     controller_list = reordered_list
+
 
 # %% Create or load object to store the results
 if load_folder_name == '':

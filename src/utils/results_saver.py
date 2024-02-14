@@ -8,7 +8,8 @@ class Results(object):
     """
 
     def __init__(self, 
-                controller_list=None, 
+                controller_list=None,
+                meta_controller=None,
                 env_settings=None, 
                 prob_threshold=None, 
                 training_iters=None, 
